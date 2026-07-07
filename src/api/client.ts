@@ -1,7 +1,6 @@
 import type { ApiErrorResponse } from '../types/common'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5080/api'
-console.log("BASE_URL =", BASE_URL)
 
 export class ApiError extends Error {
   status: number

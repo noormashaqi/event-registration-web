@@ -15,17 +15,20 @@ export function useApi<T>(fetcher: () => Promise<T>, deps: React.DependencyList)
 
   useEffect(() => {
     let cancelled = false
-    setState((prev) => ({ ...prev, loading: true, error: null }))
 
-    fetcher()
-      .then((data) => {
+    async function load() {
+      setState((prev) => ({ ...prev, loading: true, error: null }))
+      try {
+        const data = await fetcher()
         if (!cancelled) setState({ data, loading: false, error: null })
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (cancelled) return
         const message = err instanceof ApiError ? err.message : 'Something went wrong. Please try again.'
         setState({ data: null, loading: false, error: message })
-      })
+      }
+    }
+
+    void load()
 
     return () => {
       cancelled = true

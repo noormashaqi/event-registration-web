@@ -94,8 +94,9 @@ export function CategoriesPage() {
 
       refetch()
 
+    } catch {
+      // saveAction surfaces errors in the form UI
     }
-    catch{}
 
   }
 
@@ -142,8 +143,9 @@ export function CategoriesPage() {
 
       refetch()
 
+    } catch {
+      // toggleAction surfaces errors in the UI
     }
-    catch {}
 
   }
 
