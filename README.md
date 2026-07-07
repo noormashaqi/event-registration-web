@@ -30,6 +30,7 @@ Open [http://localhost:5173](http://localhost:5173).
 
 - **Dashboard** — overview stats from the API
 - **Category Management** — create, edit, view, activate/deactivate, and delete categories
+- **Events** — browse events and view event details
 
 ## Environment
 

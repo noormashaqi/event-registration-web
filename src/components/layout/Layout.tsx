@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
 import { Navbar } from './Navbar'
 
+export type AppPage = 'dashboard' | 'categories' | 'events'
+
 interface LayoutProps {
-  currentPage: 'dashboard' | 'categories'
-  onNavigate: (page: 'dashboard' | 'categories') => void
+  currentPage: AppPage
+  onNavigate: (page: AppPage) => void
   children: ReactNode
 }
 
