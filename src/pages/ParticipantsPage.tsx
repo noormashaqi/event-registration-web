@@ -309,6 +309,7 @@ const ParticipantsPage: React.FC = () => {
       {/* Delete Confirmation Dialog */}
       {state.deleteConfirmId !== null && (
         <ConfirmDialog
+          open={state.deleteConfirmId !== null}
           title="Delete Participant"
           message="Are you sure you want to delete this participant? This action cannot be undone."
           onConfirm={handleDeleteConfirm}
