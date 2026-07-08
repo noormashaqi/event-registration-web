@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+
 import { ApiError } from '../../api/client';
 
 interface ErrorAlertProps {
