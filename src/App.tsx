@@ -4,6 +4,7 @@ import { CategoriesPage } from './pages/CategoriesPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { EventDetailsPage } from './pages/EventDetailsPage'
 import { EventsPage } from './pages/EventsPage'
+import ParticipantsPage from './pages/ParticipantsPage'
 
 function App() {
   const [page, setPage] = useState<AppPage>('dashboard')
@@ -35,6 +36,8 @@ function App() {
         return <CategoriesPage />
       case 'events':
         return <EventsPage onViewEvent={handleViewEvent} />
+      case 'participants':
+        return <ParticipantsPage />
     }
   }
 
