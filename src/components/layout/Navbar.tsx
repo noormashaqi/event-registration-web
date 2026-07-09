@@ -10,6 +10,7 @@ export function Navbar({ currentPage, onNavigate }: NavbarProps) {
     { page: 'dashboard', label: 'Dashboard' },
     { page: 'categories', label: 'Categories' },
     { page: 'events', label: 'Events' },
+    { page: 'participants', label: 'Participants' },  // ← ADD THIS
   ]
 
   return (
@@ -30,9 +31,6 @@ export function Navbar({ currentPage, onNavigate }: NavbarProps) {
               {label}
             </button>
           ))}
-          <span className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-300" title="Coming soon">
-            Participants
-          </span>
         </nav>
       </div>
     </header>
