@@ -1,6 +1,7 @@
 import { Button } from './Button'
 
 interface ConfirmDialogProps {
+  open: boolean  // ← Add this
   title: string
   message: string
   confirmLabel?: string
@@ -12,6 +13,7 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({
+  open,  // ← Add this
   title,
   message,
   confirmLabel,
@@ -21,6 +23,8 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  if (!open) return null  // ← Add this check
+  
   const label = confirmText ?? confirmLabel ?? 'Confirm'
 
   return (

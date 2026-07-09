@@ -3,6 +3,7 @@ import { useApi } from '../hooks/useApi'
 import { Button } from '../components/ui/Button'
 import { ActiveBadge } from '../components/ui/Badge'
 import { ErrorState, LoadingState } from '../components/ui/States'
+import RegistrationsSection from '../components/RegistrationsSection'
 
 function formatDateTime(isoString: string): string {
   return new Date(isoString).toLocaleString(undefined, {
@@ -57,6 +58,17 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
           <DetailItem label="Registration deadline" value={formatDateTime(event.registrationDeadline)} />
           <DetailItem label="Category ID" value={String(event.categoryId)} />
         </dl>
+      </div>
+
+      {/* Registrations Section */}
+      <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <RegistrationsSection
+          eventId={event.id}
+          eventStartTime={new Date(event.startAt)}
+          registrationDeadline={new Date(event.registrationDeadline)}
+          capacity={event.capacity}
+          eventIsActive={event.isActive}
+        />
       </div>
     </div>
   )
