@@ -65,8 +65,8 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
         <RegistrationsSection
           eventId={event.id}
           eventStartTime={new Date(event.startAt)}
-          registrationDeadline={new Date(event.registrationDeadline)}
-          capacity={event.capacity}
+          registrationDeadline={event.registrationDeadline ? new Date(event.registrationDeadline) : new Date()}
+          capacity={event.capacity ?? 0}
           eventIsActive={event.isActive}
         />
       </div>
