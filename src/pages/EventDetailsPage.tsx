@@ -52,10 +52,10 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
 
         <dl className="mt-6 grid gap-4 border-t border-gray-100 pt-6 sm:grid-cols-2">
           <DetailItem label="Location" value={event.location} />
-          <DetailItem label="Capacity" value={`${event.capacity} people`} />
+          <DetailItem label="Capacity" value={`${event.capacity ?? 'N/A'} people`} />
           <DetailItem label="Start" value={formatDateTime(event.startAt)} />
           <DetailItem label="End" value={formatDateTime(event.endAt)} />
-          <DetailItem label="Registration deadline" value={formatDateTime(event.registrationDeadline)} />
+          <DetailItem label="Registration deadline" value={event.registrationDeadline ? formatDateTime(event.registrationDeadline) : 'Not set'} />
           <DetailItem label="Category ID" value={String(event.categoryId)} />
         </dl>
       </div>
@@ -65,8 +65,8 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
         <RegistrationsSection
           eventId={event.id}
           eventStartTime={new Date(event.startAt)}
-          registrationDeadline={new Date(event.registrationDeadline)}
-          capacity={event.capacity}
+          registrationDeadline={event.registrationDeadline ? new Date(event.registrationDeadline) : new Date()}
+          capacity={event.capacity ?? 0}
           eventIsActive={event.isActive}
         />
       </div>

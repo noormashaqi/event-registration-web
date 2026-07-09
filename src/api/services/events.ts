@@ -1,15 +1,21 @@
 import { apiClient } from '../client'
-import type { Event, EventFormValues } from '../../types/event'
+import type {
+  EventDetails,
+  EventFormValues,
+  EventListItem,
+  EventListParams,
+  PaginatedResult,
+} from '../../types/event'
 
 export const eventsService = {
-  getAll: (includeInactive = false) =>
-    apiClient.get<Event[]>('/events', { includeInactive }),
+  getAll: (params: EventListParams = {}) =>
+    apiClient.get<PaginatedResult<EventListItem>>('/events', { ...params }),
 
-  getById: (id: number) => apiClient.get<Event>(`/events/${id}`),
+  getById: (id: number) => apiClient.get<EventDetails>(`/events/${id}`),
 
-  create: (data: EventFormValues) => apiClient.post<Event>('/events', data),
+  create: (data: EventFormValues) => apiClient.post<{ id: number }>('/events', data),
 
-  update: (id: number, data: EventFormValues) => apiClient.put<Event>(`/events/${id}`, data),
+  update: (id: number, data: EventFormValues) => apiClient.put<void>(`/events/${id}`, data),
 
   remove: (id: number) => apiClient.delete<void>(`/events/${id}`),
 }
