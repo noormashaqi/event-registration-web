@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getParticipants, deleteParticipant } from '../api/services/participants';
-import type { PaginatedParticipants } from '../types/participant';
+import type { PaginatedParticipants, ParticipantListQueryParams } from '../types/participant';
 import { ApiError } from '../api/client';
 import ParticipantForm from '../components/participants/ParticipantForm';
 import ErrorAlert from '../components/ui/ErrorAlert';
@@ -57,7 +57,7 @@ const ParticipantsPage: React.FC = () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const params: any = {
+      const params: ParticipantListQueryParams = {
         page: state.currentPage,
         pageSize: state.pageSize,
       };
@@ -66,7 +66,7 @@ const ParticipantsPage: React.FC = () => {
         params.search = state.searchTerm;
       }
       if (state.selectedIsActive !== '') {
-        params.isActive = state.selectedIsActive as boolean;
+        params.isActive = state.selectedIsActive;
       }
 
       const data = await getParticipants(params);
@@ -137,7 +137,7 @@ const ParticipantsPage: React.FC = () => {
   }
 
   function closeDeleteConfirm() {
-    setState((prev) => ({ ...prev, deleteConfirmId: null }));
+    setState((prev) => ({ ...prev, deleteConfirmId: null, deleteLoading: false }));
   }
 
   async function handleDeleteConfirm() {
@@ -201,10 +201,10 @@ const ParticipantsPage: React.FC = () => {
               Status
             </label>
             <select
-  value={state.selectedIsActive === '' ? '' : String(state.selectedIsActive)}
-  onChange={(e) => handleIsActiveChange(e.target.value)}
-  className="..."
->
+              value={state.selectedIsActive === '' ? '' : String(state.selectedIsActive)}
+              onChange={(e) => handleIsActiveChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
               <option value="">All Status</option>
               <option value="true">Active</option>
               <option value="false">Inactive</option>

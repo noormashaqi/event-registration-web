@@ -1,4 +1,4 @@
-import type { AppPage } from './Layout'
+import type { AppPage } from '../../utils/navigation'
 
 interface NavbarProps {
   currentPage: AppPage
@@ -10,7 +10,7 @@ export function Navbar({ currentPage, onNavigate }: NavbarProps) {
     { page: 'dashboard', label: 'Dashboard' },
     { page: 'categories', label: 'Categories' },
     { page: 'events', label: 'Events' },
-    { page: 'participants', label: 'Participants' },  // ← ADD THIS
+    { page: 'participants', label: 'Participants' },
   ]
 
   return (

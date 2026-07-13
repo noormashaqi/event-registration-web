@@ -1,16 +1,23 @@
-export interface Event {
+export type EventStatus = 'Upcoming' | 'Ongoing' | 'Completed'
+
+/** Shape returned by GET /events (list) and GET /events/:id (detail). */
+export interface EventSummary {
   id: number
   categoryId: number
+  categoryName: string
   name: string
-  description: string | null
   location: string
   startAt: string
   endAt: string
   registrationDeadline: string
   capacity: number
   isActive: boolean
-  createdAt: string
-  updatedAt: string | null
+  eventStatus: EventStatus
+}
+
+/** GET /events/:id additionally includes the description. */
+export interface EventDetail extends EventSummary {
+  description: string | null
 }
 
 export interface EventFormValues {

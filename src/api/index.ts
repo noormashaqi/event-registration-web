@@ -1,4 +1,6 @@
 export { categoriesService } from './services/categories'
 export { dashboardService } from './services/dashboard'
 export { eventsService } from './services/events'
+export * as participantsService from './services/participants'
+export * as registrationsService from './services/registrations'
 export { ApiError } from './client'

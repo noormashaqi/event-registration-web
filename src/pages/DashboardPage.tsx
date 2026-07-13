@@ -21,7 +21,11 @@ function StatCard({ label, value }: { label: string; value: number }) {
   )
 }
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  onViewEvent: (id: number) => void
+}
+
+export function DashboardPage({ onViewEvent }: DashboardPageProps) {
   const { data, loading, error, refetch } = useApi(() => dashboardService.getSummary(), [])
 
   if (loading) {
@@ -79,8 +83,12 @@ export function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {data.upcomingEvents.map((event) => (
-                  <tr key={event.id} className="transition hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">{event.name}</td>
+                  <tr
+                    key={event.id}
+                    onClick={() => onViewEvent(event.id)}
+                    className="cursor-pointer transition hover:bg-gray-50"
+                  >
+                    <td className="px-6 py-4 font-medium text-blue-600 hover:underline">{event.name}</td>
                     <td className="px-6 py-4 text-gray-600">{event.categoryName}</td>
                     <td className="px-6 py-4 text-gray-600">{formatDateTime(event.startAt)}</td>
                     <td className="px-6 py-4 text-gray-600">{event.location}</td>

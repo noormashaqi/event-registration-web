@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navbar } from './Navbar'
-
-export type AppPage = 'dashboard' | 'categories' | 'events' | 'participants'
+import type { AppPage } from '../../utils/navigation'
 
 interface LayoutProps {
   currentPage: AppPage

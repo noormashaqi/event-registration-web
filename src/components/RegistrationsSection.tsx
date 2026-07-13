@@ -6,7 +6,11 @@
 import React, { useState, useEffect } from 'react';
 import { getEventRegistrations, registerParticipant, cancelRegistration } from '../api/services/registrations';
 import { getParticipants } from '../api/services/participants';
-import type { PaginatedRegistrations, RegisterParticipantRequest } from '../types/registration';
+import type {
+  PaginatedRegistrations,
+  RegisterParticipantRequest,
+  RegistrationListQueryParams,
+} from '../types/registration';
 import type { PaginatedParticipants } from '../types/participant';
 import { ApiError } from '../api/client';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -30,6 +34,12 @@ interface RegistrationsSectionState {
   selectedStatus: '' | '1' | '2';
   currentPage: number;
   pageSize: number;
+
+  // Full (unpaginated, unfiltered-by-search) counts used for capacity checks
+  // and the summary cards. These are independent of the current page/search
+  // so they stay correct no matter what filters are applied to the table.
+  activeCount: number;
+  cancelledCount: number;
 
   showRegisterForm: boolean;
   participantSearch: string;
@@ -61,6 +71,9 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
     currentPage: 1,
     pageSize: 10,
 
+    activeCount: 0,
+    cancelledCount: 0,
+
     showRegisterForm: false,
     participantSearch: '',
     availableParticipants: null,
@@ -80,7 +93,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
     eventIsActive &&
     now < registrationDeadline &&
     now < eventStartTime &&
-    (state.registrations?.totalCount || 0) < capacity;
+    state.activeCount < capacity;
 
   const registerDisabledReason = !eventIsActive
     ? 'Event is not active'
@@ -88,7 +101,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
     ? 'Event has already started'
     : now >= registrationDeadline
     ? 'Registration deadline has passed'
-    : (state.registrations?.totalCount || 0) >= capacity
+    : state.activeCount >= capacity
     ? 'Event is full'
     : null;
 
@@ -96,11 +109,18 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
     loadRegistrations();
   }, [state.currentPage, state.pageSize, state.searchTerm, state.selectedStatus]);
 
+  useEffect(() => {
+    loadCounts();
+    // Only needs to run on mount; counts are refreshed explicitly after
+    // register/cancel actions instead of on every filter change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function loadRegistrations() {
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const params: any = {
+      const params: RegistrationListQueryParams = {
         page: state.currentPage,
         pageSize: state.pageSize,
       };
@@ -120,6 +140,29 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
     }
   }
 
+  /**
+   * Loads the full active/cancelled registration counts for this event,
+   * independent of the current page, search term, or status filter. This
+   * is what powers the "Register" capacity check and the summary cards, so
+   * they stay accurate even when the table itself is filtered to a subset
+   * of registrations.
+   */
+  async function loadCounts() {
+    try {
+      const [activeResult, cancelledResult] = await Promise.all([
+        getEventRegistrations(eventId, { status: 1, pageSize: 1 }),
+        getEventRegistrations(eventId, { status: 2, pageSize: 1 }),
+      ]);
+      setState((prev) => ({
+        ...prev,
+        activeCount: activeResult.totalCount,
+        cancelledCount: cancelledResult.totalCount,
+      }));
+    } catch {
+      // Non-fatal: the table itself still loads via loadRegistrations().
+    }
+  }
+
   async function searchParticipants(searchTerm: string) {
     setState((prev) => ({ ...prev, participantSearch: searchTerm }));
 
@@ -133,7 +176,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
     try {
       const data = await getParticipants({ search: searchTerm, pageSize: 10 });
       setState((prev) => ({ ...prev, availableParticipants: data, participantsLoading: false }));
-    } catch (err) {
+    } catch {
       setState((prev) => ({ ...prev, participantsLoading: false }));
     }
   }
@@ -152,6 +195,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
       await registerParticipant(eventId, request);
       closeRegisterForm();
       loadRegistrations();
+      loadCounts();
     } catch (err) {
       const error = err instanceof ApiError ? err : new ApiError(500, 'Failed to register participant');
       setState((prev) => ({ ...prev, registerError: error, registerLoading: false }));
@@ -166,6 +210,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
       availableParticipants: null,
       selectedParticipantId: null,
       registerNotes: '',
+      registerLoading: false,
       registerError: null,
     }));
   }
@@ -175,7 +220,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
   }
 
   function closeCancelConfirm() {
-    setState((prev) => ({ ...prev, cancelConfirmId: null }));
+    setState((prev) => ({ ...prev, cancelConfirmId: null, cancelLoading: false }));
   }
 
   async function handleCancelConfirm() {
@@ -187,6 +232,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
       await cancelRegistration(state.cancelConfirmId);
       closeCancelConfirm();
       loadRegistrations();
+      loadCounts();
     } catch (err) {
       const error = err instanceof ApiError ? err : new ApiError(500, 'Failed to cancel registration');
       setState((prev) => ({ ...prev, cancelError: error, cancelLoading: false }));
@@ -198,8 +244,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
   }
 
   const registrations = state.registrations;
-  const activeCount = registrations?.items.filter((r) => r.status === 1).length || 0;
-  const availableSeats = capacity - activeCount;
+  const availableSeats = Math.max(capacity - state.activeCount, 0);
 
   return (
     <div className="space-y-6">
@@ -209,7 +254,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-blue-50 rounded-lg p-4">
             <p className="text-sm text-gray-600">Active Registrations</p>
-            <p className="text-2xl font-bold text-blue-600">{activeCount}</p>
+            <p className="text-2xl font-bold text-blue-600">{state.activeCount}</p>
           </div>
           <div className="bg-green-50 rounded-lg p-4">
             <p className="text-sm text-gray-600">Available Seats</p>
@@ -217,9 +262,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
           </div>
           <div className="bg-purple-50 rounded-lg p-4">
             <p className="text-sm text-gray-600">Cancelled</p>
-            <p className="text-2xl font-bold text-purple-600">
-              {registrations?.items.filter((r) => r.status === 2).length || 0}
-            </p>
+            <p className="text-2xl font-bold text-purple-600">{state.cancelledCount}</p>
           </div>
         </div>
       </div>
@@ -278,7 +321,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
             </label>
             <select
               value={state.selectedStatus}
-              onChange={(e) => setState((prev) => ({ ...prev, selectedStatus: e.target.value as any, currentPage: 1 }))}
+              onChange={(e) => setState((prev) => ({ ...prev, selectedStatus: e.target.value as '' | '1' | '2', currentPage: 1 }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Status</option>
