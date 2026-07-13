@@ -3,3 +3,11 @@
 body {
   @apply bg-gray-50 text-gray-900;
 }
+
+/* Tailwind's base reset sets cursor: default on <button>, so clickable
+   buttons don't look clickable by default. Restore the pointer for any
+   enabled button app-wide; disabled buttons keep whatever cursor their
+   own classes set (usually cursor-not-allowed). */
+button:not(:disabled) {
+  cursor: pointer;
+}
