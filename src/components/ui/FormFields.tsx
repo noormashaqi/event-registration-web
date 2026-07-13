@@ -53,6 +53,22 @@ export function TextAreaField({ label, id, required, error, className = '', ...r
   )
 }
 
+interface SelectFieldProps extends InputHTMLAttributes<HTMLSelectElement> {
+  label: string
+  error?: string
+  children: ReactNode
+}
+
+export function SelectField({ label, id, required, error, className = '', children, ...rest }: SelectFieldProps) {
+  return (
+    <FieldWrapper label={label} htmlFor={id ?? label} required={required} error={error}>
+      <select id={id ?? label} className={`${inputBaseClasses} ${className}`} {...rest}>
+        {children}
+      </select>
+    </FieldWrapper>
+  )
+}
+
 export function CheckboxField({ label, id, ...rest }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <div className="mb-4 flex items-center gap-2">
