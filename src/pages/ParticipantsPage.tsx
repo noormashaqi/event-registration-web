@@ -4,14 +4,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { getParticipants, deleteParticipant } from '../api/services/participants';
-import type { PaginatedParticipants, ParticipantListQueryParams } from '../types/participant';
-import { ApiError } from '../api/client';
+import { participantsService, ApiError } from '../api';
+import type { PaginatedParticipants, ParticipantDetail, ParticipantListQueryParams } from '../types/participant';
 import ParticipantForm from '../components/participants/ParticipantForm';
-import ErrorAlert from '../components/ui/ErrorAlert';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
-import EmptyState from '../components/ui/EmptyState';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/States';
+import { Pagination } from '../components/ui/Pagination';
+import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { formatDate } from '../utils/formatters';
 
 interface ParticipantsPageState {
   participants: PaginatedParticipants | null;
@@ -24,6 +24,9 @@ interface ParticipantsPageState {
   showForm: boolean;
   formMode: 'create' | 'edit';
   selectedParticipantId: number | null;
+  viewing: ParticipantDetail | null;
+  viewLoading: boolean;
+  viewError: string | null;
   deleteConfirmId: number | null;
   deleteLoading: boolean;
   deleteError: ApiError | null;
@@ -42,6 +45,9 @@ const ParticipantsPage: React.FC = () => {
     showForm: false,
     formMode: 'create',
     selectedParticipantId: null,
+    viewing: null,
+    viewLoading: false,
+    viewError: null,
     deleteConfirmId: null,
     deleteLoading: false,
     deleteError: null,
@@ -51,6 +57,7 @@ const ParticipantsPage: React.FC = () => {
   // Load participants on mount and when filters change
   useEffect(() => {
     loadParticipants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentPage, state.pageSize, state.searchTerm, state.selectedIsActive]);
 
   async function loadParticipants() {
@@ -69,7 +76,7 @@ const ParticipantsPage: React.FC = () => {
         params.isActive = state.selectedIsActive;
       }
 
-      const data = await getParticipants(params);
+      const data = await participantsService.getAll(params);
       setState((prev) => ({ ...prev, participants: data, loading: false }));
     } catch (err) {
       const error = err instanceof ApiError ? err : new ApiError(500, 'Failed to load participants');
@@ -132,6 +139,20 @@ const ParticipantsPage: React.FC = () => {
     setState((prev) => ({ ...prev, submitError: error }));
   }
 
+  async function openViewDetails(participantId: number) {
+    setState((prev) => ({ ...prev, viewLoading: true, viewError: null }));
+    try {
+      const detail = await participantsService.getById(participantId);
+      setState((prev) => ({ ...prev, viewing: detail, viewLoading: false }));
+    } catch {
+      setState((prev) => ({ ...prev, viewLoading: false, viewError: 'Could not load participant details.' }));
+    }
+  }
+
+  function closeViewDetails() {
+    setState((prev) => ({ ...prev, viewing: null }));
+  }
+
   function openDeleteConfirm(participantId: number) {
     setState((prev) => ({ ...prev, deleteConfirmId: participantId, deleteError: null }));
   }
@@ -146,7 +167,7 @@ const ParticipantsPage: React.FC = () => {
     setState((prev) => ({ ...prev, deleteLoading: true, deleteError: null }));
 
     try {
-      await deleteParticipant(state.deleteConfirmId);
+      await participantsService.remove(state.deleteConfirmId);
       closeDeleteConfirm();
       setState((prev) => ({ ...prev, currentPage: 1 }));
       loadParticipants();
@@ -157,11 +178,11 @@ const ParticipantsPage: React.FC = () => {
   }
 
   if (state.loading && !state.participants) {
-    return <LoadingSpinner />;
+    return <LoadingState label="Loading participants..." />;
   }
 
   if (state.error && !state.participants) {
-    return <ErrorAlert error={state.error} onRetry={loadParticipants} />;
+    return <ErrorState message={state.error.message} onRetry={loadParticipants} />;
   }
 
   const participants = state.participants;
@@ -215,11 +236,20 @@ const ParticipantsPage: React.FC = () => {
 
       {/* Error Alerts */}
       {state.submitError && (
-        <ErrorAlert error={state.submitError} onDismiss={() => setState((prev) => ({ ...prev, submitError: null }))} />
+        <ErrorState
+          message={state.submitError.message}
+          errors={state.submitError.errors}
+          onDismiss={() => setState((prev) => ({ ...prev, submitError: null }))}
+        />
       )}
       {state.deleteError && (
-        <ErrorAlert error={state.deleteError} onDismiss={() => setState((prev) => ({ ...prev, deleteError: null }))} />
+        <ErrorState
+          message={state.deleteError.message}
+          errors={state.deleteError.errors}
+          onDismiss={() => setState((prev) => ({ ...prev, deleteError: null }))}
+        />
       )}
+      {state.viewError && <ErrorState message={state.viewError} onDismiss={() => setState((prev) => ({ ...prev, viewError: null }))} />}
 
       {/* Participants Table */}
       {participants && participants.items.length > 0 ? (
@@ -241,9 +271,7 @@ const ParticipantsPage: React.FC = () => {
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{participant.fullName}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{participant.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{participant.phone}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {participant.dateOfBirth ? new Date(participant.dateOfBirth).toLocaleDateString() : '-'}
-                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{formatDate(participant.dateOfBirth, '-')}</td>
                   <td className="px-6 py-4 text-sm">
                     <span
                       className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -254,6 +282,12 @@ const ParticipantsPage: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-right space-x-2">
+                    <button
+                      onClick={() => openViewDetails(participant.id)}
+                      className="text-gray-600 hover:text-gray-900 font-medium"
+                    >
+                      View
+                    </button>
                     <button
                       onClick={() => openEditForm(participant.id)}
                       className="text-blue-600 hover:text-blue-900 font-medium"
@@ -277,22 +311,8 @@ const ParticipantsPage: React.FC = () => {
       )}
 
       {/* Pagination */}
-      {participants && participants.totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2">
-          {Array.from({ length: participants.totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              onClick={() => handlePageChange(page)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                page === state.currentPage
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-        </div>
+      {participants && (
+        <Pagination currentPage={state.currentPage} totalPages={participants.totalPages} onPageChange={handlePageChange} />
       )}
 
       {/* Participant Form Modal */}
@@ -305,6 +325,32 @@ const ParticipantsPage: React.FC = () => {
           onError={handleFormError}
         />
       )}
+
+      {/* View Details Modal */}
+      <Modal open={state.viewing !== null} title="Participant Details" onClose={closeViewDetails}>
+        <div className="space-y-4 text-sm">
+          <div>
+            <p className="text-gray-500">Full Name</p>
+            <p className="font-medium">{state.viewing?.fullName}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">Email</p>
+            <p className="font-medium">{state.viewing?.email}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">Phone</p>
+            <p className="font-medium">{state.viewing?.phone}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">Date of Birth</p>
+            <p className="font-medium">{formatDate(state.viewing?.dateOfBirth, '-')}</p>
+          </div>
+          <div>
+            <p className="text-gray-500">Status</p>
+            <p className="font-medium">{state.viewing?.isActive ? 'Active' : 'Inactive'}</p>
+          </div>
+        </div>
+      </Modal>
 
       {/* Delete Confirmation Dialog */}
       {state.deleteConfirmId !== null && (

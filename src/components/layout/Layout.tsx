@@ -3,7 +3,7 @@ import { Navbar } from './Navbar'
 import type { AppPage } from '../../utils/navigation'
 
 interface LayoutProps {
-  currentPage: AppPage
+  currentPage: AppPage | null
   onNavigate: (page: AppPage) => void
   children: ReactNode
 }

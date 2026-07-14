@@ -5,7 +5,6 @@
 
 import { apiClient } from '../client';
 import type {
- 
   RegistrationDetail,
   RegisterParticipantRequest,
   RegistrationResponse,
@@ -13,59 +12,7 @@ import type {
   RegistrationListQueryParams,
 } from '../../types/registration';
 
-/**
- * Get paginated list of registrations for an event
- */
-export async function getEventRegistrations(
-  eventId: number,
-  params?: RegistrationListQueryParams
-): Promise<PaginatedRegistrations> {
-  const queryParams = buildQueryString(params);
-  return apiClient.get<PaginatedRegistrations>(
-    `/events/${eventId}/registrations${queryParams}`
-  );
-}
-
-/**
- * Get a single registration by ID
- */
-export async function getRegistrationById(
-  registrationId: number
-): Promise<RegistrationDetail> {
-  return apiClient.get<RegistrationDetail>(`/registrations/${registrationId}`);
-}
-
-/**
- * Register a participant in an event (or reactivate if cancelled)
- */
-export async function registerParticipant(
-  eventId: number,
-  data: RegisterParticipantRequest
-): Promise<RegistrationResponse> {
-  return apiClient.post<RegistrationResponse>(
-    `/events/${eventId}/registrations`,
-    data
-  );
-}
-
-/**
- * Cancel a registration
- */
-export async function cancelRegistration(
-  registrationId: number
-): Promise<RegistrationResponse> {
-  return apiClient.patch<RegistrationResponse>(
-    `/registrations/${registrationId}/cancel`,
-    {}
-  );
-}
-
-/**
- * Build query string from parameters
- */
-function buildQueryString(
-  params?: RegistrationListQueryParams
-): string {
+function buildQueryString(params?: RegistrationListQueryParams): string {
   if (!params || Object.keys(params).length === 0) {
     return '';
   }
@@ -87,4 +34,29 @@ function buildQueryString(
 
   const queryString = queryParams.toString();
   return queryString ? `?${queryString}` : '';
+}
+
+/**
+ * Named to match the other object-shaped services (categoriesService,
+ * eventsService, participantsService) so every feature is imported from the
+ * `api` barrel the same way.
+ */
+export const registrationsService = {
+  /** Get paginated list of registrations for an event */
+  getForEvent: (eventId: number, params?: RegistrationListQueryParams): Promise<PaginatedRegistrations> => {
+    const queryParams = buildQueryString(params);
+    return apiClient.get<PaginatedRegistrations>(`/events/${eventId}/registrations${queryParams}`);
+  },
+
+  /** Get a single registration by ID */
+  getById: (registrationId: number): Promise<RegistrationDetail> =>
+    apiClient.get<RegistrationDetail>(`/registrations/${registrationId}`),
+
+  /** Register a participant in an event (or reactivate if cancelled) */
+  register: (eventId: number, data: RegisterParticipantRequest): Promise<RegistrationResponse> =>
+    apiClient.post<RegistrationResponse>(`/events/${eventId}/registrations`, data),
+
+  /** Cancel a registration */
+  cancel: (registrationId: number): Promise<RegistrationResponse> =>
+    apiClient.patch<RegistrationResponse>(`/registrations/${registrationId}/cancel`, {}),
 }

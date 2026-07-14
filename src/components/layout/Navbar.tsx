@@ -1,7 +1,7 @@
 import type { AppPage } from '../../utils/navigation'
 
 interface NavbarProps {
-  currentPage: AppPage
+  currentPage: AppPage | null
   onNavigate: (page: AppPage) => void
 }
 

@@ -23,7 +23,7 @@ interface RawEventListResult {
 
 export const eventsService = {
   getAll: async (params: EventListParams = {}): Promise<PagedResult<EventSummary>> => {
-    const pageSize = params.pageSize ?? 100
+    const pageSize = params.pageSize ?? 10
     const raw = await apiClient.get<RawEventListResult>('/events', {
       page: params.page ?? 1,
       pageSize,

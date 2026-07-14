@@ -1,16 +1,7 @@
 import { dashboardService } from '../api'
 import { useApi } from '../hooks/useApi'
 import { EmptyState, ErrorState, LoadingState } from '../components/ui/States'
-
-function formatDateTime(isoString: string): string {
-  return new Date(isoString).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+import { formatDateTime } from '../utils/formatters'
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (

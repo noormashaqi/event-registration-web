@@ -1,24 +1,11 @@
 import { eventsService } from '../api'
-import { getEventRegistrations } from '../api/services/registrations'
 import { useApi } from '../hooks/useApi'
 import { Button } from '../components/ui/Button'
 import { ActiveBadge } from '../components/ui/Badge'
 import { ErrorState, LoadingState } from '../components/ui/States'
 import RegistrationsSection from '../components/RegistrationsSection'
+import { formatDateTime } from '../utils/formatters'
 import type { EventStatus } from '../types/event'
-
-function formatDateTime(isoString: string | null | undefined): string {
-  if (!isoString) return 'Not set'
-  const date = new Date(isoString)
-  if (Number.isNaN(date.getTime())) return 'Not set'
-  return date.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 const statusClasses: Record<EventStatus, string> = {
   Upcoming: 'bg-blue-100 text-blue-800',
@@ -34,11 +21,6 @@ interface EventDetailsPageProps {
 export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
   const { data: event, loading, error, refetch } = useApi(() => eventsService.getById(eventId), [eventId])
 
-  const { data: activeRegistrations } = useApi(
-    () => getEventRegistrations(eventId, { status: 1, pageSize: 1 }),
-    [eventId],
-  )
-
   if (loading) {
     return <LoadingState label="Loading event details..." />
   }
@@ -51,8 +33,9 @@ export function EventDetailsPage({ eventId, onBack }: EventDetailsPageProps) {
     return <ErrorState message="Event not found." />
   }
 
-  const activeCount = activeRegistrations?.totalCount ?? 0
-  const availableSeats = Math.max(event.capacity - activeCount, 0)
+  // The API already computes these on the event itself, so there's no need
+  // for a second registrations request just to derive available seats.
+  const availableSeats = event.availableSeats
 
   return (
     <div className="space-y-6">

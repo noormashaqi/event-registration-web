@@ -4,9 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { createParticipant, updateParticipant, getParticipantById } from '../../api/services/participants';
+import { participantsService, ApiError } from '../../api';
 import type { ParticipantRequest } from '../../types/participant';
-import { ApiError } from '../../api/client';
 
 interface ParticipantFormProps {
   mode: 'create' | 'edit';
@@ -59,7 +58,7 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
   async function loadParticipantData() {
     try {
       if (!participantId) return;
-      const participant = await getParticipantById(participantId);
+      const participant = await participantsService.getById(participantId);
       setFormData({
         fullName: participant.fullName,
         email: participant.email,
@@ -127,9 +126,9 @@ const ParticipantForm: React.FC<ParticipantFormProps> = ({
       };
 
       if (mode === 'create') {
-        await createParticipant(request);
+        await participantsService.create(request);
       } else if (participantId) {
-        await updateParticipant(participantId, request);
+        await participantsService.update(participantId, request);
       }
 
       onSuccess();

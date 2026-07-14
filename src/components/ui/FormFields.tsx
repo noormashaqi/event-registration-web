@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react'
+import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 
 function FieldWrapper({
   label,
@@ -49,6 +49,22 @@ export function TextAreaField({ label, id, required, error, className = '', ...r
   return (
     <FieldWrapper label={label} htmlFor={id ?? label} required={required} error={error}>
       <textarea id={id ?? label} rows={3} className={`${inputBaseClasses} ${className}`} {...rest} />
+    </FieldWrapper>
+  )
+}
+
+interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
+  label: string
+  error?: string
+  children: ReactNode
+}
+
+export function SelectField({ label, id, required, error, className = '', children, ...rest }: SelectFieldProps) {
+  return (
+    <FieldWrapper label={label} htmlFor={id ?? label} required={required} error={error}>
+      <select id={id ?? label} className={`${inputBaseClasses} ${className}`} {...rest}>
+        {children}
+      </select>
     </FieldWrapper>
   )
 }

@@ -4,19 +4,18 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { getEventRegistrations, registerParticipant, cancelRegistration } from '../api/services/registrations';
-import { getParticipants } from '../api/services/participants';
+import { registrationsService, participantsService, ApiError } from '../api';
 import type {
   PaginatedRegistrations,
   RegisterParticipantRequest,
   RegistrationListQueryParams,
+  RegistrationStatus,
 } from '../types/registration';
 import type { PaginatedParticipants } from '../types/participant';
-import { ApiError } from '../api/client';
 import { ConfirmDialog } from './ui/ConfirmDialog';
-import ErrorAlert from './ui/ErrorAlert';
-import LoadingSpinner from './ui/LoadingSpinner';
-import EmptyState from './ui/EmptyState';
+import { ErrorState, LoadingState, EmptyState } from './ui/States';
+import { Pagination } from './ui/Pagination';
+import { Modal } from './ui/Modal';
 
 interface RegistrationsSectionProps {
   eventId: number;
@@ -54,6 +53,9 @@ interface RegistrationsSectionState {
   cancelLoading: boolean;
   cancelError: ApiError | null;
 }
+
+const ACTIVE_STATUS: RegistrationStatus = 1;
+const CANCELLED_STATUS: RegistrationStatus = 2;
 
 const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
   eventId,
@@ -107,6 +109,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
 
   useEffect(() => {
     loadRegistrations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.currentPage, state.pageSize, state.searchTerm, state.selectedStatus]);
 
   useEffect(() => {
@@ -129,10 +132,10 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
         params.search = state.searchTerm;
       }
       if (state.selectedStatus !== '') {
-        params.status = parseInt(state.selectedStatus);
+        params.status = Number(state.selectedStatus) as RegistrationStatus;
       }
 
-      const data = await getEventRegistrations(eventId, params);
+      const data = await registrationsService.getForEvent(eventId, params);
       setState((prev) => ({ ...prev, registrations: data, loading: false }));
     } catch (err) {
       const error = err instanceof ApiError ? err : new ApiError(500, 'Failed to load registrations');
@@ -150,8 +153,8 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
   async function loadCounts() {
     try {
       const [activeResult, cancelledResult] = await Promise.all([
-        getEventRegistrations(eventId, { status: 1, pageSize: 1 }),
-        getEventRegistrations(eventId, { status: 2, pageSize: 1 }),
+        registrationsService.getForEvent(eventId, { status: ACTIVE_STATUS, pageSize: 1 }),
+        registrationsService.getForEvent(eventId, { status: CANCELLED_STATUS, pageSize: 1 }),
       ]);
       setState((prev) => ({
         ...prev,
@@ -174,7 +177,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
     setState((prev) => ({ ...prev, participantsLoading: true }));
 
     try {
-      const data = await getParticipants({ search: searchTerm, pageSize: 10 });
+      const data = await participantsService.getAll({ search: searchTerm, pageSize: 10 });
       setState((prev) => ({ ...prev, availableParticipants: data, participantsLoading: false }));
     } catch {
       setState((prev) => ({ ...prev, participantsLoading: false }));
@@ -192,7 +195,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
         notes: state.registerNotes || null,
       };
 
-      await registerParticipant(eventId, request);
+      await registrationsService.register(eventId, request);
       closeRegisterForm();
       loadRegistrations();
       loadCounts();
@@ -229,7 +232,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
     setState((prev) => ({ ...prev, cancelLoading: true, cancelError: null }));
 
     try {
-      await cancelRegistration(state.cancelConfirmId);
+      await registrationsService.cancel(state.cancelConfirmId);
       closeCancelConfirm();
       loadRegistrations();
       loadCounts();
@@ -240,7 +243,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
   }
 
   if (state.loading && !state.registrations) {
-    return <LoadingSpinner />;
+    return <LoadingState label="Loading registrations..." />;
   }
 
   const registrations = state.registrations;
@@ -289,12 +292,20 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
       </div>
 
       {/* Errors */}
-      {state.error && <ErrorAlert error={state.error} onRetry={loadRegistrations} />}
+      {state.error && <ErrorState message={state.error.message} errors={state.error.errors} onRetry={loadRegistrations} />}
       {state.registerError && (
-        <ErrorAlert error={state.registerError} onDismiss={() => setState((prev) => ({ ...prev, registerError: null }))} />
+        <ErrorState
+          message={state.registerError.message}
+          errors={state.registerError.errors}
+          onDismiss={() => setState((prev) => ({ ...prev, registerError: null }))}
+        />
       )}
       {state.cancelError && (
-        <ErrorAlert error={state.cancelError} onDismiss={() => setState((prev) => ({ ...prev, cancelError: null }))} />
+        <ErrorState
+          message={state.cancelError.message}
+          errors={state.cancelError.errors}
+          onDismiss={() => setState((prev) => ({ ...prev, cancelError: null }))}
+        />
       )}
 
       {/* Filters */}
@@ -355,7 +366,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
                   <td className="px-6 py-4 text-sm">
                     <span
                       className={`px-2 py-1 rounded text-xs font-semibold ${
-                        reg.status === 1
+                        reg.status === ACTIVE_STATUS
                           ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
                       }`}
@@ -367,7 +378,7 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
                     {new Date(reg.registeredAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-sm text-right">
-                    {reg.status === 1 && (
+                    {reg.status === ACTIVE_STATUS && (
                       <button
                         onClick={() => openCancelConfirm(reg.id)}
                         className="text-red-600 hover:text-red-900 font-medium"
@@ -386,108 +397,88 @@ const RegistrationsSection: React.FC<RegistrationsSectionProps> = ({
       )}
 
       {/* Pagination */}
-      {registrations && registrations.totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2">
-          {Array.from({ length: registrations.totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              onClick={() => setState((prev) => ({ ...prev, currentPage: page }))}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                page === state.currentPage
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-        </div>
+      {registrations && (
+        <Pagination
+          currentPage={state.currentPage}
+          totalPages={registrations.totalPages}
+          onPageChange={(page) => setState((prev) => ({ ...prev, currentPage: page }))}
+        />
       )}
 
       {/* Register Form Modal */}
-      {state.showRegisterForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-            <h3 className="text-xl font-bold mb-4">Register Participant</h3>
-
-            {/* Participant Search */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Search Participant
-              </label>
-              <input
-                type="text"
-                value={state.participantSearch}
-                onChange={(e) => searchParticipants(e.target.value)}
-                placeholder="Type name, email, or phone..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Participant Dropdown */}
-            {state.availableParticipants && state.availableParticipants.items.length > 0 && (
-              <div className="mb-4 border border-gray-300 rounded-lg max-h-48 overflow-y-auto">
-                {state.availableParticipants.items.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() =>
-                      setState((prev) => ({
-                        ...prev,
-                        selectedParticipantId: p.id,
-                        participantSearch: p.fullName,
-                        availableParticipants: null,
-                      }))
-                    }
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 border-b border-gray-200 last:border-0"
-                  >
-                    <p className="font-medium">{p.fullName}</p>
-                    <p className="text-sm text-gray-600">{p.email}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {state.selectedParticipantId && (
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm font-medium text-blue-900">✓ Participant selected</p>
-              </div>
-            )}
-
-            {/* Notes */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes (optional)
-              </label>
-              <textarea
-                value={state.registerNotes}
-                onChange={(e) => setState((prev) => ({ ...prev, registerNotes: e.target.value }))}
-                placeholder="Add any notes..."
-                maxLength={500}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={3}
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={closeRegisterForm}
-                disabled={state.registerLoading}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRegister}
-                disabled={!state.selectedParticipantId || state.registerLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                {state.registerLoading ? 'Registering...' : 'Register'}
-              </button>
-            </div>
-          </div>
+      <Modal open={state.showRegisterForm} title="Register Participant" onClose={closeRegisterForm}>
+        {/* Participant Search */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Search Participant</label>
+          <input
+            type="text"
+            value={state.participantSearch}
+            onChange={(e) => searchParticipants(e.target.value)}
+            placeholder="Type name, email, or phone..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
         </div>
-      )}
+
+        {/* Participant Dropdown */}
+        {state.availableParticipants && state.availableParticipants.items.length > 0 && (
+          <div className="mb-4 border border-gray-300 rounded-lg max-h-48 overflow-y-auto">
+            {state.availableParticipants.items.map((p) => (
+              <button
+                key={p.id}
+                onClick={() =>
+                  setState((prev) => ({
+                    ...prev,
+                    selectedParticipantId: p.id,
+                    participantSearch: p.fullName,
+                    availableParticipants: null,
+                  }))
+                }
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 border-b border-gray-200 last:border-0"
+              >
+                <p className="font-medium">{p.fullName}</p>
+                <p className="text-sm text-gray-600">{p.email}</p>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {state.selectedParticipantId && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm font-medium text-blue-900">✓ Participant selected</p>
+          </div>
+        )}
+
+        {/* Notes */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+          <textarea
+            value={state.registerNotes}
+            onChange={(e) => setState((prev) => ({ ...prev, registerNotes: e.target.value }))}
+            placeholder="Add any notes..."
+            maxLength={500}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={3}
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={closeRegisterForm}
+            disabled={state.registerLoading}
+            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleRegister}
+            disabled={!state.selectedParticipantId || state.registerLoading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {state.registerLoading ? 'Registering...' : 'Register'}
+          </button>
+        </div>
+      </Modal>
 
       {/* Cancel Confirmation */}
       {state.cancelConfirmId !== null && (

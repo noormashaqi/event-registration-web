@@ -11,6 +11,10 @@ export interface EventSummary {
   endAt: string
   registrationDeadline: string
   capacity: number
+  /** Number of registrations with status "Active" for this event. */
+  activeRegistrationCount: number
+  /** capacity - activeRegistrationCount, computed by the API. */
+  availableSeats: number
   isActive: boolean
   eventStatus: EventStatus
 }

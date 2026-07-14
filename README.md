@@ -30,8 +30,8 @@ Open [http://localhost:5173](http://localhost:5173).
 
 - **Dashboard** — overview stats from the API, with quick links into upcoming events
 - **Category Management** — create, edit, view, activate/deactivate, and delete categories
-- **Events** — browse events (filterable by date range), and view event details (category, status, seats, and registration deadline)
-- **Participants** — search, filter, create, edit, and delete participants
+- **Events** — search/filter (by name, location, category, active status, and date range), paginated table, create, edit, delete, and a detail view (category, status, capacity, available seats, and registration deadline)
+- **Participants** — search, filter, view details, create, edit, and delete participants
 - **Registrations** — register participants to an event (with live capacity checks), search/filter an event's registrations, and cancel active registrations
 
 ## Routing
@@ -44,3 +44,10 @@ The app uses the browser History API (`src/utils/navigation.ts`) instead of in-m
 |---------------------|---------------------------------|--------------------|
 | `VITE_API_BASE_URL` | `http://localhost:5080/api`    | Backend API base   |
 | `VITE_APP_NAME`     | `Event Registration System`    | App display name   |
+
+## Known limitations
+
+- No authentication/authorization — the app assumes a single trusted user against a local API.
+- No optimistic UI or client-side caching between pages; every navigation re-fetches from the API.
+- Category and Event forms validate against the same rules as the backend, but the backend remains the source of truth (e.g. server-side capacity checks on update).
+- The registrations list/counts are refetched independently by `RegistrationsSection`; there's no shared cache invalidation across the dashboard, events list, and event detail pages.

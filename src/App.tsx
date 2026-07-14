@@ -34,7 +34,7 @@ function App() {
 
   if (route === null) {
     return (
-      <Layout currentPage="dashboard" onNavigate={handleNavigate}>
+      <Layout currentPage={null} onNavigate={handleNavigate}>
         <NotFoundPage onGoHome={() => handleNavigate('dashboard')} />
       </Layout>
     )

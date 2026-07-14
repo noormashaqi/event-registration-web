@@ -9,14 +9,38 @@ export function LoadingState({ label = 'Loading...' }: { label?: string }) {
   )
 }
 
-export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+interface ErrorStateProps {
+  message: string
+  /** Optional field-level validation errors (e.g. from an ApiError) shown as a bulleted list. */
+  errors?: string[]
+  onRetry?: () => void
+  onDismiss?: () => void
+}
+
+export function ErrorState({ message, errors, onRetry, onDismiss }: ErrorStateProps) {
   return (
     <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
       <p>{message}</p>
-      {onRetry && (
-        <button onClick={onRetry} className="mt-2 font-medium underline hover:no-underline">
-          Try again
-        </button>
+      {errors && errors.length > 0 && (
+        <ul className="mt-2 list-inside list-disc text-red-700">
+          {errors.map((err, i) => (
+            <li key={i}>{err}</li>
+          ))}
+        </ul>
+      )}
+      {(onRetry || onDismiss) && (
+        <div className="mt-2 flex gap-4">
+          {onRetry && (
+            <button onClick={onRetry} className="font-medium underline hover:no-underline">
+              Try again
+            </button>
+          )}
+          {onDismiss && (
+            <button onClick={onDismiss} className="font-medium underline hover:no-underline">
+              Dismiss
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
